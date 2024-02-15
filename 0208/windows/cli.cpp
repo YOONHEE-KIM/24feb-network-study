@@ -26,7 +26,7 @@ int main() {
         return 0;
     }
     
-    // '/' 경로 요청
+    // 경로 요청
     string http_request = "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
     const char* request_buffer = http_request.c_str();
     int request_length = http_request.size();
@@ -37,21 +37,29 @@ int main() {
         WSACleanup();
         return 0;
     }
-    char buf[1024] = "";
-    string html_content;
 
     // 서버로부터 응답 받기
+    char buf[1024];
+    string html_content;
     int recvlen;
-    while ((recvlen = recv(clisock, buf, sizeof(buf), 0)) > 0) {
-        buf[recvlen] = '\0';
-        html_content += buf;
-    }
+    do {
+        recvlen = recv(clisock, buf, sizeof(buf), 0);
+        if (recvlen > 0) {
+            html_content.append(buf, recvlen);
+        } else if (recvlen == 0) {
+            cout << "Connection closed by server" << endl;
+        } else {
+            int error_code = WSAGetLastError();
+            if (error_code != WSAEWOULDBLOCK) {
+                cout << "recv() error: " << error_code << endl;
+            }
+        }
+    } while (recvlen > 0);
 
     cout << "Received HTML:" << endl;
     cout << html_content << endl;
 
     closesocket(clisock);
-
     WSACleanup();
     return 0;
 }

@@ -51,8 +51,12 @@ int main() {
         // 클라이언트의 요청을 받아들이고 경로를 추출
         char buf[1024];
         int recvlen = recv(clisock, buf, sizeof(buf), 0);
-        if (recvlen <= 0) {
-            cout << "recv() error or connection closed" << endl;
+        if (recvlen == SOCKET_ERROR) {
+            cout << "recv() error" << endl;
+            closesocket(clisock);
+            continue;
+        } else if (recvlen == 0) {
+            cout << "Connection closed by client" << endl;
             closesocket(clisock);
             continue;
         }
@@ -146,10 +150,10 @@ int main() {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>알바 마감</title>
+                    <title>24-1 시간표</title>
                 </head>
                 <body>
-                    <h1>주말 알바 마감</h1>
+                    <h1>수기 신청 성공 기원</h1>
                 </body>
                 </html>
             )"; 
@@ -160,10 +164,15 @@ int main() {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>알바 마감</title>
+                    <title>메모장</title>
                 </head>
                 <body>
-                    <h1>주말 알바 마감</h1>
+                    <h1>메모장</h1>
+                    <hr>
+                    <h2>메모장</h2>
+                    <h3>메모장</h3>
+                    <h4>메모장</h4>
+                    <h5>메모장</h5>
                 </body>
                 </html>
             )";
@@ -173,10 +182,10 @@ int main() {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>알바 마감</title>
+                    <title>스케줄러</title>
                 </head>
                 <body>
-                    <h1>주말 알바 마감</h1>
+                    <h1>오늘 할 일 : 숨쉬기</h1>
                 </body>
                 </html>
             )";
@@ -217,4 +226,3 @@ int main() {
     WSACleanup();
     return 0;
 }
-
