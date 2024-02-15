@@ -48,8 +48,34 @@ int main() {
 
         cout << "Client Connected" << endl;
 
+        // 클라이언트의 요청을 받아들이고 경로를 추출
+        char buf[1024];
+        int recvlen = recv(clisock, buf, sizeof(buf), 0);
+        if (recvlen <= 0) {
+            cout << "recv() error or connection closed" << endl;
+            closesocket(clisock);
+            continue;
+        }
+
+        string request_message(buf, recvlen);
+
+        // 요청 메시지에서 첫 번째 줄을 추출
+        istringstream iss(request_message);
+        string first_line;
+        getline(iss, first_line);
+
+        // 첫 번째 줄에서 경로를 추출
+        size_t start_pos = first_line.find(' ');
+        size_t end_pos = first_line.find(' ', start_pos + 1);
+        string requested_path = first_line.substr(start_pos + 1, end_pos - start_pos - 1);
+
+        // HTTP/1.1 이후의 문자열이 포함되어 있으면 제거
+        size_t http_pos = requested_path.find(" HTTP/1.1");
+        if (http_pos != string::npos) {
+            requested_path = requested_path.substr(0, http_pos);
+        }
+
         // 클라이언트가 요청한 경로에 따라 HTML 내용을 설정
-        string requested_path;
         string html_content;
 
         if (requested_path == "/") {
@@ -179,8 +205,6 @@ int main() {
         int sendlen = send(clisock, response_buffer, response_length, 0);
         if (sendlen == SOCKET_ERROR) {
             cout << "send() error" << endl;
-            closesocket(clisock);
-            continue;
         }
 
         cout << "HTML Sent" << endl;
@@ -193,3 +217,4 @@ int main() {
     WSACleanup();
     return 0;
 }
+
