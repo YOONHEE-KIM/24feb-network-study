@@ -37,7 +37,8 @@ int main() {
         int addrlen = sizeof(cliaddr);
         SOCKET clisock = accept(servsock, (SOCKADDR*)&cliaddr, &addrlen);
         if (clisock == INVALID_SOCKET) {
-            if (WSAGetLastError() == WSAEWOULDBLOCK) {
+            int error_code = WSAGetLastError();
+            if (error_code == WSAEWOULDBLOCK || error_code == WSAECONNABORTED) {
                 continue;
             }
             else {
@@ -48,18 +49,19 @@ int main() {
 
         cout << "Client Connected" << endl;
 
-        // 클라이언트의 요청을 받아들이고 경로를 추출
-        char buf[1024];
-        int recvlen = recv(clisock, buf, sizeof(buf), 0);
-        if (recvlen == SOCKET_ERROR) {
-            cout << "recv() error" << endl;
-            closesocket(clisock);
-            continue;
-        } else if (recvlen == 0) {
-            cout << "Connection closed by client" << endl;
-            closesocket(clisock);
-            continue;
-        }
+        while (true) {
+            char buf[1024];
+            int recvlen = recv(clisock, buf, sizeof(buf), 0);
+            if (recvlen == SOCKET_ERROR) {
+                cout << "recv() error" << endl;
+                closesocket(clisock);
+                break;
+            } else if (recvlen == 0) {
+                cout << "Connection closed by client" << endl;
+                closesocket(clisock);
+                break;
+            }
+
 
         string request_message(buf, recvlen);
 
@@ -214,12 +216,14 @@ int main() {
         int sendlen = send(clisock, response_buffer, response_length, 0);
         if (sendlen == SOCKET_ERROR) {
             cout << "send() error" << endl;
-        }
+        }else {
+                cout << "HTML Sent" << endl;
+       
+        } break;
+    }
 
-        cout << "HTML Sent" << endl;
-
-        closesocket(clisock);
         cout << "Client Disconnected" << endl;
+        closesocket(clisock);
     }
 
     closesocket(servsock);
