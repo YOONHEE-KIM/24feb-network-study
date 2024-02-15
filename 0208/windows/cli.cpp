@@ -42,20 +42,19 @@ int main() {
     char buf[1024];
     string html_content;
     int recvlen;
-    bool should_break = false; // 데이터를 정상적으로 받았는지 여부를 저장할 변수 추가
+    bool should_break = false;
     do {
         recvlen = recv(clisock, buf, sizeof(buf), 0);
         if (recvlen > 0) {
-            // 데이터를 수신한 경우에만 처리
             html_content.append(buf, recvlen);
-    } else if (recvlen == 0) {
+        } else if (recvlen == 0) {
             cout << "Connection closed by server" << endl;
-            should_break = true; // 서버가 연결을 종료했으므로 루프를 탈출해야 함
-    } else {
-        int error_code = WSAGetLastError();
-        if (error_code != WSAEWOULDBLOCK) {
+            should_break = true;
+        } else {
+            int error_code = WSAGetLastError();
+            if (error_code != WSAEWOULDBLOCK) {
                 cout << "recv() error: " << error_code << endl;
-                should_break = true; // 에러 발생 시 루프를 탈출해야 함
+                should_break = true;
             }
         }
     } while (recvlen > 0 && !should_break);

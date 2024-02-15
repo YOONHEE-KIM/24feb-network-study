@@ -10,12 +10,6 @@ int main() {
         return 0;
     }
 
-    u_long on = 1;
-    if (ioctlsocket(servsock, FIONBIO, &on) == SOCKET_ERROR) {
-        cout << "ioctlsocket() error" << endl;
-        return 0;
-    }
-
     SOCKADDR_IN servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -29,6 +23,12 @@ int main() {
 
     if (listen(servsock, SOMAXCONN) == SOCKET_ERROR) {
         cout << "listen() error" << endl;
+        return 0;
+    }
+
+    u_long on = 1;
+    if (ioctlsocket(servsock, FIONBIO, &on) == SOCKET_ERROR) {
+        cout << "ioctlsocket() error" << endl;
         return 0;
     }
 
@@ -53,9 +53,15 @@ int main() {
             char buf[1024];
             int recvlen = recv(clisock, buf, sizeof(buf), 0);
             if (recvlen == SOCKET_ERROR) {
-                cout << "recv() error" << endl;
-                closesocket(clisock);
-                break;
+                int error_code = WSAGetLastError();
+                if (error_code == WSAEWOULDBLOCK) {
+                    continue;
+                }
+                else {
+                    cout << "recv() error" << endl;
+                    closesocket(clisock);
+                    break;
+                }
             } else if (recvlen == 0) {
                 cout << "Connection closed by client" << endl;
                 closesocket(clisock);
@@ -95,13 +101,33 @@ int main() {
                 </head>
                 <body>
                     <h1>아무거나 끄적</h1>
-                    <button onclick=\"navigateTo('/albamorning')\">오픈</button>
-                    <button onclick=\"navigateTo('/albaclose')\">마감</button>
-                    <button onclick=\"navigateTo('/timetable')\">24-1 시간표</button>
-                    <button onclick=\"navigateTo('/memo')\">메모</button>
-                    <button onclick=\"navigateTo('scheduler/')\">스케줄러</button>
+                    <button id="button1" onclick=\"navigateTo('/albamorning')\">오픈</button>
+                    <button id="button2" onclick=\"navigateTo('/albaclose')\">마감</button>
+                    <button id="button3" onclick=\"navigateTo('/timetable')\">24-1 시간표</button>
+                    <button id="button4" onclick=\"navigateTo('/memo')\">메모</button>
+                    <button id="button5" onclick=\"navigateTo('scheduler/')\">스케줄러</button>
+                    <hr>
+                    버튼 이벤트 처리가 아직이라 경로를 직접 입력해야 이동 가능
+                    <br>
+                    각각 /albamorning, /albaclose, /timetable, /memo, /scheduler 로 이동
 
                     <script>
+                        document.getElementById("button1").addEventListener("click", function() {
+                            navigateTo('/albamorning');
+                        });
+                        document.getElementById("button2").addEventListener("click", function() {
+                            navigateTo('/albaclose');
+                        });
+                        document.getElementById("button3").addEventListener("click", function() {
+                            navigateTo('/timetable');
+                        });
+                        document.getElementById("button4").addEventListener("click", function() {
+                            navigateTo('/memo');
+                        });
+                        document.getElementById("button5").addEventListener("click", function() {
+                            navigateTo('/scheduler');
+                        });
+
                         function navigateTo(path) {
                             window.location.href = \"http://100.106.146.50:12345\" + path;
                         }
@@ -218,8 +244,7 @@ int main() {
             cout << "send() error" << endl;
         }else {
                 cout << "HTML Sent" << endl;
-       
-        } break;
+         } 
     }
 
         cout << "Client Disconnected" << endl;
