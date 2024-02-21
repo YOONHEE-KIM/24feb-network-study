@@ -23,7 +23,7 @@ void RecvThread(SOCKET sock){
                 break;
             }
         }
-        std::cout << "클라이언트: " << recvBuf << std::endl;
+        std::cout << "recv: " << recvBuf << std::endl;
     }
 }
 
