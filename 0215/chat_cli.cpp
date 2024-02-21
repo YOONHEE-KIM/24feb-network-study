@@ -23,6 +23,7 @@ void RecvThread(SOCKET sock){
                 break;
             }
         }
+        std::cout << "클라이언트: " << recvBuf << std::endl;
     }
 }
 
@@ -33,7 +34,9 @@ void SendThread(SOCKET sock){
     cout << "대화 상대를 입력하세요: ";
     cin.getline(recipient, 100);
 
-    cout << "메시지를 입력하세요: ";
+    std::cout << "메시지를 입력하세요: ";
+    std::string message;
+    std::getline(std::cin, message);
     while(true) {
         cin.getline(sendBuf, DEFAULT_BUFLEN);
         send(sock, recipient, strlen(recipient), 0);

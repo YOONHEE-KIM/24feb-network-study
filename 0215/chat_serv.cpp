@@ -151,6 +151,16 @@ void SendDataToClient(Session* session) {
                 session->sock, &wsabuf_S, 1,
                 NULL, 0, &session->writeOverLapped, NULL
             );
+    
+    std::cout << "서버: ";
+    std::string message;
+    std::getline(std::cin, message);
+
+    strcpy(session->sendBuf, message.c_str());
+    session->bytesToSend = message.length();
+    session->bytesSent = 0;
+
+    SendDataToClient(session);
 }
 
 void WorkerThread(HANDLE iocpHd) {
