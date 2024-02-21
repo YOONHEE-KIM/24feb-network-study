@@ -3,12 +3,14 @@
 #define DEFAULT_BUFLEN 1024
 
 void RecvThread(SOCKET sock){
-    char recvBuf[DEFAULT_BUFLEN];
+    char recvBuf[DEFAULT_BUFLEN + 1];
     while(true) {
         int recvlen = recv(sock, recvBuf, DEFAULT_BUFLEN, 0);
         if (recvlen > 0){
             recvBuf[recvlen] = '\0';
             cout << "Received: " << recvBuf << endl;
+
+            send(sock, recvBuf, recvlen, 0);
         }
         else if (recvlen == 0){
             cout << "Server disconnected" <<endl;
@@ -26,9 +28,18 @@ void RecvThread(SOCKET sock){
 
 void SendThread(SOCKET sock){
     char sendBuf[DEFAULT_BUFLEN];
+    char recipient[100];
+
+    cout << "대화 상대를 입력하세요: ";
+    cin.getline(recipient, 100);
+
+    cout << "메시지를 입력하세요: ";
     while(true) {
         cin.getline(sendBuf, DEFAULT_BUFLEN);
-        int sendlen = send(sock, sendBuf, strlen(sendBuf), 0);
+        send(sock, recipient, strlen(recipient), 0);
+        send(sock, sendBuf, strlen(sendBuf), 0);
+
+        int sendlen = send(sock, sendBuf, strlen(sendBuf) + 1, 0);
         if (sendlen == SOCKET_ERROR){
             int error = WSAGetLastError();
             if(error != WSAEWOULDBLOCK){
@@ -52,7 +63,7 @@ int main() {
     SOCKADDR_IN servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(INADDR_ANY); 
+    servaddr.sin_addr.s_addr = inet_addr("100.106.146.50"); 
     servaddr.sin_port = htons(12345); 
 
     if (connect(sock, (SOCKADDR*)&servaddr, sizeof(servaddr)) == SOCKET_ERROR){

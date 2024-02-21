@@ -9,6 +9,7 @@ struct Session {
     char sendBuf[DEFAULT_BUFLEN] = {};
     int bytesToSend = 0; //보낼 바이트 수
     int bytesSent = 0; //보낸 바이트 수
+    char identifier[100];
     WSAOVERLAPPED readOverLapped = {};
     WSAOVERLAPPED writeOverLapped = {};
 
@@ -27,6 +28,7 @@ atomic<bool> TPoolRunning = true;
 
 void SendDataToClient(Session* session);
 void WorkerThread(HANDLE iocpHd);
+vector<Session*> sessions;
 
 MemoryPool* MemPool = new MemoryPool(sizeof(Session), 1000);
 
@@ -67,7 +69,7 @@ int main() {
 
     HANDLE iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
-    vector<Session*> sessions;
+    
     sessions.reserve(100);
 
     for (int i = 0; i < MAX_THREAD; i++) {
@@ -158,57 +160,70 @@ void WorkerThread(HANDLE iocpHd) {
     WSABUF wsabuf_S = {}, wsabuf_R = {};
 
     while (TPoolRunning) {
-        std::unique_lock<std::mutex> lock(queueMutex); 
-        queueCV.wait(lock, [] {return !globalQueue.empty();});
+        while(!globalQueue.empty()){
+            std::unique_lock<std::mutex> lock(queueMutex); 
+            session = globalQueue.front();
+            globalQueue.pop();
+            lock.unlock();
 
-        session = globalQueue.front();
-        globalQueue.pop();
-
-        lock.unlock();
-
-        bool ret = GetQueuedCompletionStatus(
+            bool ret = GetQueuedCompletionStatus(
             iocpHd, &bytesTransfered,
             (ULONG_PTR*)&session, &lpOverlapped, INFINITE
-        );
-        if (!ret || bytesTransfered == 0) {
-            cout << "Client Disconnected" << endl;
-            closesocket(session->sock);
-            MemPool_delete(*MemPool, session); 
+            );
+            if (!ret || bytesTransfered == 0) {
+                cout << "Client Disconnected" << endl;
+                closesocket(session->sock);
+                MemPool_delete(*MemPool, session); 
 
-            continue;
-        }
+                continue;
+            }
 
-        if (lpOverlapped == &session->readOverLapped) {
+            if (lpOverlapped == &session->readOverLapped) {
 
-            cout << "Received: " << session->recvBuf << endl;
+                cout << "메시지 도착! : " << session->recvBuf << endl;
 
-            wsabuf_S.buf = session->recvBuf;
-            wsabuf_S.len = bytesTransfered;
+                for(auto otherSession : sessions){
+                    if (otherSession != session){
+                        strcpy(otherSession->sendBuf, session->identifier);
+                        strcat(otherSession->sendBuf, ": ");
+                        strcat(otherSession->sendBuf, session->recvBuf);
+                        otherSession->bytesToSend = strlen(otherSession->sendBuf);
+                        otherSession->bytesSent = 0;
 
-            session->bytesToSend = bytesTransfered;
-            session->bytesSent = 0;
+                        SendDataToClient(otherSession);
+                    }
+                }
 
-            SendDataToClient(session);  
-        }
-        else if (lpOverlapped == &session->writeOverLapped) {
-            session->bytesSent += bytesTransfered;
-
-            if(session->bytesSent < session->bytesToSend){
-                wsabuf_S.buf = session->sendBuf + session->bytesSent;
-                wsabuf_S.len = session->bytesToSend - session->bytesSent;
-
-                SendDataToClient(session);
-            } else{
-                wsabuf_R.buf = session->recvBuf;
-                wsabuf_R.len = DEFAULT_BUFLEN;
-
+                wsabuf_S.buf = session->recvBuf;
+                wsabuf_S.len = bytesTransfered;
+                
                 DWORD flags = 0;
-
+                
                 WSARecv(
                     session->sock, &wsabuf_R, 1,
                     NULL, &flags, &session->readOverLapped, NULL
-                    );
-            }                              
-        }
+                ); 
+            }
+            else if (lpOverlapped == &session->writeOverLapped) {
+                session->bytesSent += bytesTransfered;
+
+                if(session->bytesSent < session->bytesToSend){
+                    wsabuf_S.buf = session->sendBuf + session->bytesSent;
+                    wsabuf_S.len = session->bytesToSend - session->bytesSent;
+
+                    SendDataToClient(session);
+                } else{
+                    wsabuf_R.buf = session->recvBuf;
+                    wsabuf_R.len = DEFAULT_BUFLEN;
+
+                    DWORD flags = 0;
+
+                    WSARecv(
+                        session->sock, &wsabuf_R, 1,
+                        NULL, &flags, &session->readOverLapped, NULL
+                        );
+                }                              
+            }
+        }   
     }
 }
