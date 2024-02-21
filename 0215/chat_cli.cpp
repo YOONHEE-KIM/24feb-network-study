@@ -31,10 +31,10 @@ void SendThread(SOCKET sock){
     char sendBuf[DEFAULT_BUFLEN];
     char recipient[100];
 
-    cout << "대화 상대를 입력하세요: ";
+    cout << "recipient: ";
     cin.getline(recipient, 100);
 
-    std::cout << "메시지를 입력하세요: ";
+    std::cout << "meaasge: ";
     std::string message;
     std::getline(std::cin, message);
     while(true) {
