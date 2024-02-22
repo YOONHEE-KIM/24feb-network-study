@@ -3,14 +3,12 @@
 #define DEFAULT_BUFLEN 1024
 
 void RecvThread(SOCKET sock){
-    char recvBuf[DEFAULT_BUFLEN + 1];
+    char recvBuf[DEFAULT_BUFLEN];
     while(true) {
         int recvlen = recv(sock, recvBuf, DEFAULT_BUFLEN, 0);
         if (recvlen > 0){
             recvBuf[recvlen] = '\0';
             cout << "Received: " << recvBuf << endl;
-
-            send(sock, recvBuf, recvlen, 0);
         }
         else if (recvlen == 0){
             cout << "Server disconnected" <<endl;
@@ -23,26 +21,15 @@ void RecvThread(SOCKET sock){
                 break;
             }
         }
-        std::cout << "recv: " << recvBuf << std::endl;
     }
 }
 
 void SendThread(SOCKET sock){
     char sendBuf[DEFAULT_BUFLEN];
-    char recipient[100];
-
-    cout << "recipient: ";
-    cin.getline(recipient, 100);
-
-    std::cout << "meaasge: ";
-    std::string message;
-    std::getline(std::cin, message);
     while(true) {
+        cout << "message: ";
         cin.getline(sendBuf, DEFAULT_BUFLEN);
-        send(sock, recipient, strlen(recipient), 0);
-        send(sock, sendBuf, strlen(sendBuf), 0);
-
-        int sendlen = send(sock, sendBuf, strlen(sendBuf) + 1, 0);
+        int sendlen = send(sock, sendBuf, strlen(sendBuf), 0);
         if (sendlen == SOCKET_ERROR){
             int error = WSAGetLastError();
             if(error != WSAEWOULDBLOCK){
