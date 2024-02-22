@@ -4,24 +4,35 @@
 
 void RecvThread(SOCKET sock){
     char recvBuf[DEFAULT_BUFLEN];
+    WSABUF wsabuf_R = {};
+    DWORD flags = 0;
+    OVERLAPPED overlapped = {};
+    overlapped.hEvent = WSACreateEvent();
+
     while(true) {
-        int recvlen = recv(sock, recvBuf, DEFAULT_BUFLEN, 0);
-        if (recvlen > 0){
+        int recvlen = WSARecv(sock, &wsabuf_R, 1, NULL, &flags, &overlapped, NULL);
+        if (recvlen == SOCKET_ERROR){
+            int error = WSAGetLastError();
+            if (error != WSA_IO_PENDING) {
+                cout << "WSARecv() error" << endl;
+                break;
+            }
+            // 비동기 작업 완료 대기
+            DWORD dwRet = WSAWaitForMultipleEvents(1, &overlapped.hEvent, TRUE, WSA_INFINITE, TRUE);
+            if (dwRet == WSA_WAIT_FAILED) {
+                cout << "WSAWaitForMultipleEvents() error" << endl;
+                break;
+            }
+            // 이벤트 신호 확인
+            WSAResetEvent(overlapped.hEvent);
+        }
+        else {
+            // 비동기 수신 완료
             recvBuf[recvlen] = '\0';
             cout << "Received: " << recvBuf << endl;
         }
-        else if (recvlen == 0){
-            cout << "Server disconnected" <<endl;
-            break;
-        }
-        else{
-            int error = WSAGetLastError();
-            if(error != WSAEWOULDBLOCK && error != WSAECONNRESET){
-                cout << "recv() error" << endl;
-                break;
-            }
-        }
     }
+    WSACloseEvent(overlapped.hEvent);
 }
 
 void SendThread(SOCKET sock){
@@ -29,14 +40,34 @@ void SendThread(SOCKET sock){
     while(true) {
         cout << "message: ";
         cin.getline(sendBuf, DEFAULT_BUFLEN);
-        int sendlen = send(sock, sendBuf, strlen(sendBuf), 0);
+        WSABUF wsabuf_S = {};
+        wsabuf_S.buf = sendBuf;
+        wsabuf_S.len = strlen(sendBuf);
+
+        OVERLAPPED overlapped = {};
+        overlapped.hEvent = WSACreateEvent();
+
+        int sendlen = WSASend(sock, &wsabuf_S, 1, NULL, 0, &overlapped, NULL);
         if (sendlen == SOCKET_ERROR){
             int error = WSAGetLastError();
-            if(error != WSAEWOULDBLOCK){
-                cout << "send() error" << endl;
+            if (error != WSA_IO_PENDING) {
+                cout << "WSASend() error" << endl;
                 break;
             }
+            // 비동기 작업 완료 대기
+            DWORD dwRet = WSAWaitForMultipleEvents(1, &overlapped.hEvent, TRUE, WSA_INFINITE, TRUE);
+            if (dwRet == WSA_WAIT_FAILED) {
+                cout << "WSAWaitForMultipleEvents() error" << endl;
+                break;
+            }
+            // 이벤트 신호 확인
+            WSAResetEvent(overlapped.hEvent);
         }
+        else {
+            // 비동기 송신 완료
+        }
+
+        WSACloseEvent(overlapped.hEvent);
     }
 }
 
