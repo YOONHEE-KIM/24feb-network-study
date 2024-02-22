@@ -101,6 +101,8 @@ int main() {
         }
 
         cout << "Client Connected" << endl;
+        cout << "IP Address: " << inet_ntoa(clientaddr.sin_addr) << endl;
+        cout << "Port: " << ntohs(clientaddr.sin_port) << endl;
 
         CreateIoCompletionPort((HANDLE)session->sock, iocp, (ULONG_PTR)session, 0);
 
@@ -162,8 +164,8 @@ void WorkerThread(HANDLE iocpHd) {
 
         while(true){
             bool ret = GetQueuedCompletionStatus(
-            iocpHd, &bytesTransfered,
-            (ULONG_PTR*)&session, &lpOverlapped, INFINITE
+                iocpHd, &bytesTransfered,
+                (ULONG_PTR*)&session, &lpOverlapped, INFINITE
             );
             if (!ret || bytesTransfered == 0) {
                 cout << "Client Disconnected" << endl;
@@ -179,8 +181,8 @@ void WorkerThread(HANDLE iocpHd) {
                 std::lock_guard<std::mutex> lock(sessionsMutex);
                 for (auto& otherSession : sessions) {
                     if (otherSession != session) {
-                        memcpy(otherSession->sendBuf, session->recvBuf, bytesTransfered);
                         otherSession->bytesToSend = bytesTransfered;
+                        memcpy(otherSession->sendBuf, session->recvBuf, bytesTransfered);
                         SendDataToClient(otherSession);
                     }
                 }
@@ -215,9 +217,7 @@ void WorkerThread(HANDLE iocpHd) {
                         NULL, &flags, &session->readOverLapped, NULL
                     );
                 }
-            }
-
-        
+            }        
         }
     }
 }

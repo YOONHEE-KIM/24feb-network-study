@@ -2,6 +2,8 @@
 
 #define DEFAULT_BUFLEN 1024
 
+void SendMessageToOtherClients(const char* message, SOCKET sock);
+
 void RecvThread(SOCKET sock){
     char recvBuf[DEFAULT_BUFLEN];
     WSABUF wsabuf_R = {};
@@ -30,9 +32,34 @@ void RecvThread(SOCKET sock){
             // 비동기 수신 완료
             recvBuf[recvlen] = '\0';
             cout << "Received: " << recvBuf << endl;
+
+            SendMessageToOtherClients(recvBuf, sock);
+            cout << "Other user: " << recvBuf << endl;
         }
     }
     WSACloseEvent(overlapped.hEvent);
+}
+
+void SendMessageToOtherClients(const char* message, SOCKET sock) {
+    char sendBuf[DEFAULT_BUFLEN];
+    strcpy_s(sendBuf, message);
+    int messageLen = strlen(sendBuf);
+
+    int sendlen = send(sock, sendBuf, messageLen, 0);
+    if (sendlen == SOCKET_ERROR) {
+        cout << "send() error" << endl;
+        return;
+    }
+
+    while (sendlen < messageLen) {
+        int remainingLen = messageLen - sendlen;
+        int partialSendLen = send(sock, sendBuf + sendlen, remainingLen, 0);
+        if (partialSendLen == SOCKET_ERROR) {
+            cout << "send() error" << endl;
+            return;
+        }
+        sendlen += partialSendLen;
+    }
 }
 
 void SendThread(SOCKET sock){
@@ -64,7 +91,6 @@ void SendThread(SOCKET sock){
             WSAResetEvent(overlapped.hEvent);
         }
         else {
-            // 비동기 송신 완료
         }
 
         WSACloseEvent(overlapped.hEvent);
@@ -96,7 +122,7 @@ int main() {
 
     thread sendThread(SendThread, sock);
 
-    recvThread.join();
+    recvThread.detach();
     sendThread.join();
 
     closesocket(sock);
